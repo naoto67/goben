@@ -402,6 +402,7 @@ func init() {
 
 // A cancelCtx can be canceled. When canceled, it also cancels any children
 // that implement canceler.
+// cancelCtxはキャンセルできます。キャンセルされると、キャンセラーを実装するすべての子もキャンセルされます。
 type cancelCtx struct {
 	Context
 
@@ -519,6 +520,7 @@ func WithDeadline(parent Context, d time.Time) (Context, CancelFunc) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.err == nil {
+		// AfterFunc dur後にfuncを実行する
 		c.timer = time.AfterFunc(dur, func() {
 			c.cancel(true, DeadlineExceeded)
 		})
@@ -564,6 +566,7 @@ func (c *timerCtx) cancel(removeFromParent bool, err error) {
 //
 // Canceling this context releases resources associated with it, so code should
 // call cancel as soon as the operations running in this Context complete:
+// このコンテキストをキャンセルすると、それに関連付けられたリソースが解放されるため、このコンテキストで実行されている操作が完了するとすぐに、コードはcancelを呼び出す必要があります。
 //
 // 	func slowOperationWithTimeout(ctx context.Context) (Result, error) {
 // 		ctx, cancel := context.WithTimeout(ctx, 100*time.Millisecond)
@@ -576,9 +579,11 @@ func WithTimeout(parent Context, timeout time.Duration) (Context, CancelFunc) {
 
 // WithValue returns a copy of parent in which the value associated with key is
 // val.
+// WithValueは、キーに関連付けられた値がvalである親のコピーを返します。
 //
 // Use context Values only for request-scoped data that transits processes and
 // APIs, not for passing optional parameters to functions.
+// コンテキスト値は、プロセスとAPIを転送するリクエストスコープのデータにのみ使用し、オプションのパラメーターを関数に渡すためには使用しません。
 //
 // The provided key must be comparable and should not be of type
 // string or any other built-in type to avoid collisions between
@@ -587,13 +592,17 @@ func WithTimeout(parent Context, timeout time.Duration) (Context, CancelFunc) {
 // interface{}, context keys often have concrete type
 // struct{}. Alternatively, exported context key variables' static
 // type should be a pointer or interface.
+// 提供されるキーは比較可能である必要があり、コンテキストを使用するパッケージ間の衝突を回避するために、文字列型またはその他の組み込み型であってはなりません。
+// WithValueのユーザーは、キーの独自のタイプを定義する必要があります。に割り当てるときに割り当てを回避するには interface {}、コンテキストキーは多くの場合具体的なタイプstruct {}を持っています。または、エクスポートされたコンテキストキー変数の静的タイプは、ポインターまたはインターフェイスである必要があります。
 func WithValue(parent Context, key, val interface{}) Context {
 	if parent == nil {
 		panic("cannot create context from nil parent")
 	}
+	// パニックが起きるので注意
 	if key == nil {
 		panic("nil key")
 	}
+	// Comparableは、このタイプの値が比較可能かどうかを報告します。
 	if !reflectlite.TypeOf(key).Comparable() {
 		panic("key is not comparable")
 	}
