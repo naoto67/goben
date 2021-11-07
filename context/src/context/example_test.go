@@ -36,7 +36,6 @@ func ExampleWithCancel() {
 		}()
 		return dst
 	}
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel() // cancel when we are finished consuming integers
 

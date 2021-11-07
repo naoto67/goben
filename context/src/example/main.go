@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"runtime"
+	"time"
 )
 
 func main() {
@@ -19,12 +20,16 @@ func main() {
 	fmt.Println(ctx2)
 	fmt.Println(ctx3)
 
-	_, _ = context.WithCancel(context.Background())
+	fmt.Println("GOROUTINE: ", runtime.NumGoroutine())
 
-	fmt.Println(runtime.NumGoroutine())
+	_, _ = context.WithCancel(context.Background())
+	ctx4, _ := context.WithTimeout(ctx3, time.Hour)
+	fmt.Println(ctx4)
+
+	fmt.Println("GOROUTINE: ", runtime.NumGoroutine())
 
 	f()
 
-	fmt.Println(runtime.NumGoroutine())
+	fmt.Println("GOROUTINE: ", runtime.NumGoroutine())
 
 }

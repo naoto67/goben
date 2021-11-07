@@ -90,7 +90,7 @@ type Context interface {
 	Deadline() (deadline time.Time, ok bool)
 
 	// Done returns a channel that's closed when work done on behalf of this
-	// context should be canceled. Done may return nil if this context can
+	// // context should be canceled. Done may return nil if this context can
 	// never be canceled. Successive calls to Done return the same value.
 	// The close of the Done channel may happen asynchronously,
 	// after the cancel function returns.
@@ -304,6 +304,7 @@ func newCancelCtx(parent Context) cancelCtx {
 var goroutines int32
 
 // propagateCancel arranges for child to be canceled when parent is.
+// propagateCancelは、親がキャンセルされたときに子がキャンセルされるように調整します。
 func propagateCancel(parent Context, child canceler) {
 	done := parent.Done()
 	if done == nil {
@@ -320,6 +321,7 @@ func propagateCancel(parent Context, child canceler) {
 
 	if p, ok := parentCancelCtx(parent); ok {
 		p.mu.Lock()
+		// キャンセルされている場合
 		if p.err != nil {
 			// parent has already been canceled
 			child.cancel(false, p.err)
@@ -332,6 +334,10 @@ func propagateCancel(parent Context, child canceler) {
 		}
 		p.mu.Unlock()
 	} else {
+		// 親がcancelCtx出ない場合
+		// 基本的にcontextパッケージを使っていたら、ここには入らなさそう
+		// cancelCtxもしくは、emptyCtxのみになるので。
+		// valueCtxはContextインターフェースを埋め込まれているだけなので、そのどちらかになる
 		atomic.AddInt32(&goroutines, +1)
 		go func() {
 			select {
@@ -354,16 +360,25 @@ var cancelCtxKey int
 // different done channel, in which case we should not bypass it.)
 //
 // parentCancelCtxは、親の基になる* cancelCtxを返します。
-// これを行うには、parent.Value（＆cancelCtxKey）を検索して、最も内側を囲む* cancelCtxを見つけ、parent.Done（）がその* cancelCtxと一致するかどうかを確認します。 （そうでない場合、* cancelCtxは、別の完了チャネルを提供するカスタム実装にラップされています。その場合、それをバイパスしないでください。）
+// これを行うには、parent.Value（＆cancelCtxKey）を検索して、最も内側を囲む* cancelCtxを見つけ、parent.Done（）がその* cancelCtxと一致するかどうかを確認します。
+//（そうでない場合、*cancelCtxは、別の完了チャネルを提供するカスタム実装にラップされています。その場合、私たちはそれを通過するべきではありません。）
+// 親がcancelCtxかどうかを返す
 func parentCancelCtx(parent Context) (*cancelCtx, bool) {
 	done := parent.Done()
 	if done == closedchan || done == nil {
 		return nil, false
 	}
+	// parentそのものがcancelCtxだった場合
+	// var v  interface{} =  parent
+	// if p, ok := v.(*cancelCtx); !ok {
+
+	// }
 	p, ok := parent.Value(&cancelCtxKey).(*cancelCtx)
 	if !ok {
 		return nil, false
 	}
+	// ここ何してるかいまいちわからない
+	// parentがcancelCtxで、そのdoneがDone()
 	pdone, _ := p.done.Load().(chan struct{})
 	if pdone != done {
 		return nil, false
@@ -531,6 +546,8 @@ func WithDeadline(parent Context, d time.Time) (Context, CancelFunc) {
 // A timerCtx carries a timer and a deadline. It embeds a cancelCtx to
 // implement Done and Err. It implements cancel by stopping its timer then
 // delegating to cancelCtx.cancel.
+// timerCtxには、タイマーと期限があります。それはDoneとErrを実装するためにcancelCtxを埋め込みます。
+// タイマーを停止してからcancelCtx.cancelに委任することでキャンセルを実装します。
 type timerCtx struct {
 	cancelCtx
 	timer *time.Timer // Under cancelCtx.mu.
