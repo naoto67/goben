@@ -133,7 +133,6 @@ type Context interface {
 	// Canceled if the context was canceled
 	// or DeadlineExceeded if the context's deadline passed.
 	// After Err returns a non-nil error, successive calls to Err return the same error.
-	//
 	// Doneがまだ閉じられていない場合、Errはnilを返します。
 	// Doneが閉じている場合、Errは次の理由を説明するnil以外のエラーを返します。
 	// コンテキストがキャンセルされた場合はキャンセルされました
@@ -208,6 +207,7 @@ type deadlineExceededError struct{}
 func (deadlineExceededError) Error() string { return "context deadline exceeded" }
 
 // これなんの、メソッドなのか
+// エラーをいい感じに表示するinterface network系のエラーが実装されている
 func (deadlineExceededError) Timeout() bool   { return true }
 func (deadlineExceededError) Temporary() bool { return true }
 
@@ -338,6 +338,7 @@ func propagateCancel(parent Context, child canceler) {
 		// 基本的にcontextパッケージを使っていたら、ここには入らなさそう
 		// cancelCtxもしくは、emptyCtxのみになるので。
 		// valueCtxはContextインターフェースを埋め込まれているだけなので、そのどちらかになる
+		// TODO WithTimeoutを読んだ後に、WithCancelを呼ぶ
 		atomic.AddInt32(&goroutines, +1)
 		go func() {
 			select {
@@ -379,6 +380,7 @@ func parentCancelCtx(parent Context) (*cancelCtx, bool) {
 	}
 	// ここ何してるかいまいちわからない
 	// parentがcancelCtxで、そのdoneがDone()
+	// TODO 読み直す
 	pdone, _ := p.done.Load().(chan struct{})
 	if pdone != done {
 		return nil, false
